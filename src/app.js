@@ -14,26 +14,61 @@ app.use(express.json())
 const mongoClient = new MongoClient(process.env.DATABASE_URL)
 let db;
 
-mongoClient.connect().then(() => {
-	db = mongoClient.db()
-}).catch((err) => {
-    console.log('Deu ruim!')
-})
+try {
+    await mongoClient.connect()
+    db = mongoClient.db()
+  } catch (error) {
+    console.log('deu péssimo')
+  }
 
 // const participant = []
 
-app.post('/participants', (req, res) => {
+// - [ ]  Validar: (caso algum erro seja encontrado, retornar **status 422**)
+//     - [ ]  **name** deve ser string não vazio
 
-    const nome = req.body.name
+app.post('/participants', async (req, res) => {
 
-    const schema = Joi.object({
-        name: Joi.string().alphanum().min(3).required()
+    const name = req.body.name
+
+    const schema = joi.object({
+        name: joi.string().min(1).required()
     });
 
-    db.collection("participants").insertOne({ name: nome });
+    try {
+        // const value = await schema.validateAsync({name: nome})
 
-    res.send('Ok!')
+        const { error, value } = schema.validate({ name });
+        console.log(value)
 
+        if (error) return res.status(422).send("Insira um formato válido!");
+
+        const existsUser = await db.collection("participants").findOne({ name });
+
+        if (existsUser) return res.status(409).send("Usuário já cadastrado!");    
+  
+        // await db.collection("participants").insertOne({ name, lastStatus: Date.now() });
+        await db.collection("participants").insertOne({ ...value, lastStatus: Date.now() });
+        // {...a, avatar: userAvatar.avatar}
+        res.send('Ok!')
+    }
+    catch(err) {
+        res.send('deu erro')
+    }
+    
+
+})
+
+app.get('/participants', (req, res) => {
+
+    // const participants = db.collection('participants').find()
+    db.collection("participants").find().toArray().then(participants => {
+        return res.send(participants)
+      }).catch(() => {
+        res.status(500).send("Deu zica no servidor de banco de dados")
+      })
+    
+
+    // res.send(participants)
 })
 
 const PORT = 5000

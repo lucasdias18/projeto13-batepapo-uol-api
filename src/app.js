@@ -44,6 +44,10 @@ app.post('/participants', async (req, res) => {
 
         await db.collection("participants").insertOne({ ...value, lastStatus: Date.now() });
 
+        const time = dayjs().format("HH:mm:ss")
+
+        await db.collection("messages").insertOne({ from: name, to: 'Todos', text: 'entra na sala...', type: 'status', time })
+
         res.sendStatus(201)
     }
     catch(err) {
@@ -105,17 +109,17 @@ app.get('/messages', async (req, res) => {
 
     try {
 
-        const publicMessages = await db.collection("messages").find({ type: 'message' }).toArray()
-        const privateMessages = await db.collection("messages").find({ to: user }).toArray()
-        
-        if (!limit) {
-            const showMessages = [...publicMessages, ...privateMessages]
-            return res.send(showMessages)
+        const showMessages = await db.collection("messages").find().toArray()
+
+        for (let i=0; i<showMessages.length; i++) {
+            if (showMessages[i].type === 'private_message' && showMessages[i].to !== user) {
+                showMessages.splice(i,1)
+            }
         }
+        
+        if (!limit) return res.send(showMessages.reverse())
 
-        const showMessages = [...publicMessages, ...privateMessages].slice(-limit)
-
-        res.send(showMessages)
+        res.send(showMessages.reverse().slice(0,limit))
     }
     catch {
         res.status(500).send('zica pura')

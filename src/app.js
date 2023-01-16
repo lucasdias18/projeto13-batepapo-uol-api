@@ -112,11 +112,13 @@ app.get('/messages', async (req, res) => {
         const showMessages = await db.collection("messages").find().toArray()
 
         for (let i=0; i<showMessages.length; i++) {
-            if (showMessages[i].type === 'private_message' && showMessages[i].to !== user) {
+            if (showMessages[i].type === 'private_message' && showMessages[i].to !== user && showMessages[i].from !== user) {
                 showMessages.splice(i,1)
             }
         }
-        
+
+        if (isNaN(limit) === true || limit<=0) return res.sendStatus(422)
+
         if (!limit) return res.send(showMessages.reverse())
 
         res.send(showMessages.reverse().slice(0,limit))
@@ -144,6 +146,26 @@ app.post('/status', async (req, res) => {
     }
 
 })
+
+setInterval(async () => {
+    
+    try {
+        const now = Date.now()
+        const hourNow = dayjs().format("HH:mm:ss")
+        const users = await db.collection("participants").find().toArray()
+
+        for (let i=0; i<users.length; i++) {
+            if (users[i].lastStatus < (now-15)) {
+                const newUsers = await db.collection("participants").deleteOne(users[i])
+                const messages = await db.collection("messages").insertOne({ from: users[i].name, to: 'Todos', text:'sai da sala...', type: 'status', time: hourNow  })
+            }
+        }
+        
+    }
+    catch {
+        console.log('deu ruim')
+    }
+}, 1500)
 
 const PORT = 5000
 

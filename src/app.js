@@ -35,7 +35,6 @@ app.post('/participants', async (req, res) => {
 
         const { error, value } = schema.validate({ name });
 
-
         if (error) return res.status(422).send("Insira um formato válido!");
 
         const existsUser = await db.collection("participants").findOne({ name });
@@ -80,8 +79,8 @@ app.post('/messages', async (req, res) =>{
     try {
 
         const message = { to, text, type }
-        const { error, value } = messageSchema.validate(message);
-        // console.log(error)
+        const { error } = messageSchema.validate(message);
+        // console.log(value)
 
         if (error) return res.status(422).send('foi mal')
 
@@ -91,7 +90,7 @@ app.post('/messages', async (req, res) =>{
 
         const validTo = await db.collection("participants").findOne({ name: to })
 
-        if (!validTo) return res.status(422).send('Destinatário não encontrado')
+        if (!validTo && to !== 'Todos') return res.status(422).send('Destinatário não encontrado')
 
         const time = dayjs().format("HH:mm:ss")
 

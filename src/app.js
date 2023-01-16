@@ -113,9 +113,17 @@ app.post('/messages', async (req, res) =>{
 
 })
 
-app.get('/messages', async (req, res) => {
-    
-    res.send('Ok!')
+app.get('/messages', (req, res) => {
+
+    const limit = parseInt(req.query.limit)
+
+    db.collection("messages").find().toArray().then(messages => {
+        if (!limit) return res.send(messages)
+        const showMessages = messages.slice(-limit)
+        return res.send(showMessages)
+    }).catch(() => {
+        res.status(500).send("Deu zica no servidor de banco de dados")
+    })
 
 })
 

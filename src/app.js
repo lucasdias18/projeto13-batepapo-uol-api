@@ -50,7 +50,7 @@ app.post('/participants', async (req, res) => {
         res.sendStatus(201)
     }
     catch(err) {
-        res.send('deu erro')
+        res.send(err)
     }
     
 })
@@ -80,9 +80,8 @@ app.post('/messages', async (req, res) =>{
 
         const message = { to, text, type }
         const { error } = messageSchema.validate(message);
-        // console.log(value)
 
-        if (error) return res.status(422).send('foi mal')
+        if (error) return res.status(422).send('Mensagem em formato inválido!')
 
         const validFrom = await db.collection("participants").findOne({ name: from })
 
@@ -96,10 +95,10 @@ app.post('/messages', async (req, res) =>{
 
         await db.collection("messages").insertOne({ ...message, from, time })
 
-        res.status(201).send({...message, from, time})
+        res.sendStatus(201)
     }
     catch {
-        res.status(422).send('foi péssimo')
+        res.status(500).send('deu ruim no servidor')
     }
 
 })
@@ -119,16 +118,16 @@ app.get('/messages', async (req, res) => {
             }
         }
 
-        if (!limit) return res.send(showMessages)
+        if (!limit) return res.send(showMessages.reverse())
 
         const newLimit = parseInt(limit)
 
         if (isNaN(newLimit) || newLimit<=0) return res.sendStatus(422)
 
-        res.send(showMessages.slice(0,newLimit))
+        res.send(showMessages.reverse().slice(0,newLimit))
     }
     catch {
-        res.status(500).send('zica pura')
+        res.status(500).send('deu bom não')
     }
 
 })
@@ -153,7 +152,6 @@ app.post('/status', async (req, res) => {
 
 setInterval(async () => {
         const now = Date.now()
-        // console.log(typeof(now))
         const hourNow = dayjs().format("HH:mm:ss")
         const users = await db.collection("participants").find().toArray()
 
@@ -165,28 +163,6 @@ setInterval(async () => {
             }
         }
 }, 15000)
-
-// setInterval(() => {app.delete('/participants', async (req, res) => {
-
-//     try {
-//         const now = Date.now()
-//         // console.log(typeof(now))
-//         const hourNow = dayjs().format("HH:mm:ss")
-//         const users = await db.collection("participants").find().toArray()
-
-//         for (let i=0; i<users.length; i++) {
-//             if (users[i].lastStatus < now-1000) {
-//                 const newUsers = await db.collection("participants").deleteOne(users[i])
-//                 const messages = await db.collection("messages").insertOne({ from: users[i].name, to: 'Todos', text:'sai da sala...', type: 'status', time: hourNow  })
-//             }
-//         }
-//         res.send(messages)
-//     }
-//     catch {
-//         res.status(500).send("pessimamente mal")
-//     }
-
-// })}, 15000)
 
 const PORT = 5000
 

@@ -72,23 +72,26 @@ app.post('/messages', async (req, res) =>{
     const from = req.headers.user
 
     const messageSchema = joi.object({
-        to: joi.string().required(),
+        to: joi.string().valid().required(),
         text: joi.string().required(),
-        type: joi.string().required()
+        type: joi.string().valid('message', 'private_message').required()
     })
 
     try {
 
         const message = { to, text, type }
         const { error, value } = messageSchema.validate(message);
+        // console.log(error)
 
         if (error) return res.status(422).send('foi mal')
 
-        if (type !== 'message' && type !== 'private_message') return res.status(422).send('ruim')
+        const validFrom = await db.collection("participants").findOne({ name: from })
 
-        const validUser = await db.collection("participants").findOne({ name: from })
+        if (!validFrom) return res.status(422).send('Remetente não encontrado')
 
-        if (!validUser) return res.status(422).send('Remetente não encontrado')
+        const validTo = await db.collection("participants").findOne({ name: to })
+
+        if (!validTo) return res.status(422).send('Destinatário não encontrado')
 
         const time = dayjs().format("HH:mm:ss")
 
@@ -104,7 +107,7 @@ app.post('/messages', async (req, res) =>{
 
 app.get('/messages', async (req, res) => {
 
-    const limit = parseInt(req.query.limit)
+    const limit = req.query.limit
     const user = req.headers.user
 
     try {
@@ -117,11 +120,13 @@ app.get('/messages', async (req, res) => {
             }
         }
 
-        if (isNaN(limit) === true || limit<=0) return res.sendStatus(422)
+        if (!limit) return res.send(showMessages)
 
-        if (!limit) return res.send(showMessages.reverse())
+        const newLimit = parseInt(limit)
 
-        res.send(showMessages.reverse().slice(0,limit))
+        if (isNaN(newLimit) || newLimit<=0) return res.sendStatus(422)
+
+        res.send(showMessages.slice(0,newLimit))
     }
     catch {
         res.status(500).send('zica pura')
@@ -148,24 +153,41 @@ app.post('/status', async (req, res) => {
 })
 
 setInterval(async () => {
-    
-    try {
         const now = Date.now()
+        // console.log(typeof(now))
         const hourNow = dayjs().format("HH:mm:ss")
         const users = await db.collection("participants").find().toArray()
 
         for (let i=0; i<users.length; i++) {
-            if (users[i].lastStatus < (now-15)) {
+            console.log(users[i].lastStatus < now-10000)
+            if (users[i].lastStatus < now-10000) {
                 const newUsers = await db.collection("participants").deleteOne(users[i])
                 const messages = await db.collection("messages").insertOne({ from: users[i].name, to: 'Todos', text:'sai da sala...', type: 'status', time: hourNow  })
             }
         }
-        
-    }
-    catch {
-        console.log('deu ruim')
-    }
-}, 1500)
+}, 15000)
+
+// setInterval(() => {app.delete('/participants', async (req, res) => {
+
+//     try {
+//         const now = Date.now()
+//         // console.log(typeof(now))
+//         const hourNow = dayjs().format("HH:mm:ss")
+//         const users = await db.collection("participants").find().toArray()
+
+//         for (let i=0; i<users.length; i++) {
+//             if (users[i].lastStatus < now-1000) {
+//                 const newUsers = await db.collection("participants").deleteOne(users[i])
+//                 const messages = await db.collection("messages").insertOne({ from: users[i].name, to: 'Todos', text:'sai da sala...', type: 'status', time: hourNow  })
+//             }
+//         }
+//         res.send(messages)
+//     }
+//     catch {
+//         res.status(500).send("pessimamente mal")
+//     }
+
+// })}, 15000)
 
 const PORT = 5000
 

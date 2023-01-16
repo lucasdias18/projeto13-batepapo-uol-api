@@ -3,6 +3,7 @@ import cors from "cors"
 import { MongoClient } from "mongodb"
 import dotenv from "dotenv"
 import joi from "joi"
+import dayjs from "dayjs"
 
 dotenv.config()
 
@@ -35,7 +36,6 @@ app.post('/participants', async (req, res) => {
     });
 
     try {
-        // const value = await schema.validateAsync({name: nome})
 
         const { error, value } = schema.validate({ name });
         console.log(value)
@@ -45,10 +45,9 @@ app.post('/participants', async (req, res) => {
         const existsUser = await db.collection("participants").findOne({ name });
 
         if (existsUser) return res.status(409).send("Usuário já cadastrado!");    
-  
-        // await db.collection("participants").insertOne({ name, lastStatus: Date.now() });
+
         await db.collection("participants").insertOne({ ...value, lastStatus: Date.now() });
-        // {...a, avatar: userAvatar.avatar}
+
         res.send('Ok!')
     }
     catch(err) {
@@ -69,6 +68,55 @@ app.get('/participants', (req, res) => {
     
 
     // res.send(participants)
+})
+
+app.post('/messages', async (req, res) =>{
+
+    const { to, text, type } = req.body
+    const from = req.headers.user
+
+    const messageSchema = joi.object({
+        to: joi.string().required(),
+        text: joi.string().required(),
+        type: joi.string().required()
+    })
+
+    try {
+
+        const message = { to, text, type }
+
+        // const validation = userSchema.validate(user, { abortEarly: true });
+
+        const { error, value } = messageSchema.validate(message);
+        // const { error2, value2 } = messageSchema.validate({ to, text, type: 'message' });
+        console.log(value)
+        console.log(error)
+        console.log(type)
+
+        if (error) return res.status(422).send('foi mal')
+
+        if (type !== 'message' && type !== 'private_message') return res.status(422).send('ruim')
+
+        const validUser = await db.collection("participants").findOne({ name: from })
+
+        if (!validUser) return res.status(422).send('Destinatário não encontrado')
+
+        const time = dayjs().format("HH:mm:ss")
+
+        await db.collection("messages").insertOne({ ...message, from, time })
+
+        res.status(201).send({...message, from, time})
+    }
+    catch {
+        res.status(422).send('foi péssimo')
+    }
+
+})
+
+app.get('/messages', async (req, res) => {
+    
+    res.send('Ok!')
+
 })
 
 const PORT = 5000

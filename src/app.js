@@ -22,11 +22,7 @@ try {
     console.log('deu péssimo')
   }
 
-// const participant = []
-
-// - [ ]  Validar: (caso algum erro seja encontrado, retornar **status 422**)
-//     - [ ]  **name** deve ser string não vazio
-
+  
 app.post('/participants', async (req, res) => {
 
     const name = req.body.name
@@ -38,7 +34,7 @@ app.post('/participants', async (req, res) => {
     try {
 
         const { error, value } = schema.validate({ name });
-        console.log(value)
+
 
         if (error) return res.status(422).send("Insira um formato válido!");
 
@@ -54,20 +50,16 @@ app.post('/participants', async (req, res) => {
         res.send('deu erro')
     }
     
-
 })
 
 app.get('/participants', (req, res) => {
 
-    // const participants = db.collection('participants').find()
     db.collection("participants").find().toArray().then(participants => {
         return res.send(participants)
-      }).catch(() => {
+    }).catch(() => {
         res.status(500).send("Deu zica no servidor de banco de dados")
-      })
-    
+    })
 
-    // res.send(participants)
 })
 
 app.post('/messages', async (req, res) =>{
@@ -84,14 +76,7 @@ app.post('/messages', async (req, res) =>{
     try {
 
         const message = { to, text, type }
-
-        // const validation = userSchema.validate(user, { abortEarly: true });
-
         const { error, value } = messageSchema.validate(message);
-        // const { error2, value2 } = messageSchema.validate({ to, text, type: 'message' });
-        console.log(value)
-        console.log(error)
-        console.log(type)
 
         if (error) return res.status(422).send('foi mal')
 
@@ -99,7 +84,7 @@ app.post('/messages', async (req, res) =>{
 
         const validUser = await db.collection("participants").findOne({ name: from })
 
-        if (!validUser) return res.status(422).send('Destinatário não encontrado')
+        if (!validUser) return res.status(422).send('Remetente não encontrado')
 
         const time = dayjs().format("HH:mm:ss")
 
@@ -113,17 +98,46 @@ app.post('/messages', async (req, res) =>{
 
 })
 
-app.get('/messages', (req, res) => {
+app.get('/messages', async (req, res) => {
 
     const limit = parseInt(req.query.limit)
+    const user = req.headers.user
 
-    db.collection("messages").find().toArray().then(messages => {
-        if (!limit) return res.send(messages)
-        const showMessages = messages.slice(-limit)
-        return res.send(showMessages)
-    }).catch(() => {
-        res.status(500).send("Deu zica no servidor de banco de dados")
-    })
+    try {
+
+        const publicMessages = await db.collection("messages").find({ type: 'message' }).toArray()
+        const privateMessages = await db.collection("messages").find({ to: user }).toArray()
+        
+        if (!limit) {
+            const showMessages = [...publicMessages, ...privateMessages]
+            return res.send(showMessages)
+        }
+
+        const showMessages = [...publicMessages, ...privateMessages].slice(-limit)
+
+        res.send(showMessages)
+    }
+    catch {
+        res.status(500).send('zica pura')
+    }
+
+})
+
+app.post('/status', async (req, res) => {
+
+    const name = req.headers.user
+
+    try {
+
+        const update = await db.collection("participants").updateOne({ name }, { $set: { lastStatus: Date.now() } })
+
+        if (update.modifiedCount === 0) return res.sendStatus(404)
+
+        res.sendStatus(200)
+    }
+    catch {
+        res.sendStatus(500)
+    }
 
 })
 

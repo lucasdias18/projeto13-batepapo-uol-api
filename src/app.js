@@ -22,7 +22,7 @@ try {
     console.log('deu péssimo')
   }
 
-  
+
 app.post('/participants', async (req, res) => {
 
     const name = req.body.name
@@ -44,7 +44,7 @@ app.post('/participants', async (req, res) => {
 
         await db.collection("participants").insertOne({ ...value, lastStatus: Date.now() });
 
-        res.send('Ok!')
+        res.sendStatus(201)
     }
     catch(err) {
         res.send('deu erro')
